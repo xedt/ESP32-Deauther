@@ -4,6 +4,7 @@
 #include "web_interface.h"
 #include "deauth.h"
 #include "definitions.h"
+#include "boot_button_pressed.h"
 
 int curr_channel = 1;
 
@@ -13,12 +14,17 @@ void setup() {
 #endif
 #ifdef LED
   pinMode(LED, OUTPUT);
+  pinMode(MODE_LED, OUTPUT);
 #endif
 
+  initBootButtonAsInterrupt();
+  
   WiFi.mode(WIFI_MODE_AP);
   WiFi.softAP(AP_SSID, AP_PASS);
+  esp_wifi_set_max_tx_power(84);
 
   start_web_interface();
+  digitalWrite(MODE_LED, LOW);
 }
 
 void loop() {

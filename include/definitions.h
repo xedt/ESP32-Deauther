@@ -2,14 +2,16 @@
 #define DEFINITIONS_H
 
 #define AP_SSID "ESP32-Deauther"
-#define AP_PASS "esp32wroom32"
-#define LED 2
+#define AP_PASS "00000000"
+#define LED 12
+#define MODE_LED 13
 #define SERIAL_DEBUG
 #define CHANNEL_MAX 13
 #define NUM_FRAMES_PER_DEAUTH 16
+#define SHOW_HIDE_AP true
 #define DEAUTH_BLINK_TIMES 2
 #define DEAUTH_BLINK_DURATION 20
-#define DEAUTH_TYPE_SINGLE 0
+#define DEAUTH_TYPE_LIMITED 0
 #define DEAUTH_TYPE_ALL 1
 
 #ifdef SERIAL_DEBUG

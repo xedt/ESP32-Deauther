@@ -90,8 +90,8 @@ void beaconFlood() {
   uint8_t beaconPacket[109] = {
     /*  0 - 3  */ 0x80, 0x00, 0x00, 0x00, // Type/Subtype: managment beacon frame
     /*  4 - 9  */ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Destination: broadcast
-    /* 10 - 15 */ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
-    /* 16 - 21 */ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
+    /* 10 - 15 */ 0xA0, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
+    /* 16 - 21 */ 0xA0, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
 
     // Fixed parameters
     /* 22 - 23 */ 0x00, 0x00, // Fragment & sequence number (will be done by the SDK)
@@ -150,7 +150,7 @@ void beaconFlood() {
     for (int i = 0; i < 32; i++) emptySSID[i] = ' ';
     
     // Generate random MAC
-    for (int i = 0; i < 6; i++) macAddr[i] = random(256);
+    for (int i = 1; i < 6; i++) macAddr[i] = random(256);
     
     // WiFi setup
     WiFi.mode(WIFI_MODE_STA);

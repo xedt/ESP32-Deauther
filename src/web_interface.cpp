@@ -347,6 +347,7 @@ void handle_deauth() {
   )";
 
   server.send(200, "text/html", html);
+  delay(1000);
   start_deauth(wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
 }
 
@@ -404,6 +405,7 @@ void handle_deauth_all() {
   )";
 
   server.send(200, "text/html", html);
+  delay(1000);
   server.stop();
   start_deauth({-1}, DEAUTH_TYPE_ALL, reason);
 }

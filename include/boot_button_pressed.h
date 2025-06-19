@@ -8,5 +8,6 @@ void IRAM_ATTR handleBPInterrupt();
 bool isBootButtonPressed_interrupt();
 void initBootButtonAsInterrupt();
 void clearBootButtonPressedState();
+bool isBootButtonStateChanged();
 
 #endif

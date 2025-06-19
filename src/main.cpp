@@ -37,7 +37,7 @@ void loop() {
     web_interface_handle_client();
   }
   
-  if (isBootButtonStateChanged() && millis() - bootButtonPressedTime > CLEAR_INTERRUPT_STATE_DELAY) {
+  if (millis() - bootButtonPressedTime > CLEAR_INTERRUPT_STATE_DELAY) {
     clearBootButtonPressedState();
   }
 }

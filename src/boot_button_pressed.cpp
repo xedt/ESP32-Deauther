@@ -27,18 +27,13 @@ void initBootButtonAsInterrupt() {
     attachInterrupt(digitalPinToInterrupt(BOOT_BUTTON_PIN), handleBPInterrupt, FALLING);
 }
 
-void clearBootButtonPressedState() {
-    lastBPState = 0;
-    currentBPState = 0;
-    bootButtonPressedTime = 0;
-}
-
 bool isBootButtonPressed_interrupt() {
     bool ret = currentBPState != lastBPState;
-    clearBootButtonPressedState();
+    lastBPState = currentBPState;
     return ret;
 }
 
-bool isBootButtonStateChanged() {
-    return bootButtonPressedTime != 0;
+void clearBootButtonPressedState() {
+    lastBPState = 0;
+    currentBPState = 0;
 }

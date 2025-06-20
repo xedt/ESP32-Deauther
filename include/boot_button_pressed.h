@@ -6,6 +6,6 @@ void initBootButton();
 void IRAM_ATTR handleBPInterrupt();
 bool isBootButtonPressed_interrupt();
 void initBootButtonAsInterrupt();
-
+extern volatile uint32_t bootButtonPressedTime;
 
 #endif

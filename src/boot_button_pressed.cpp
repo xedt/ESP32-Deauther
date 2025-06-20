@@ -4,6 +4,8 @@
 
 uint32_t currentBPState = 0;
 uint32_t lastBPState = 0;
+volatile uint32_t bootButtonPressedTime = 0;
+
 bool bootButtonPressed() {
     return digitalRead(BOOT_BUTTON_PIN) == LOW;
 }
@@ -14,6 +16,7 @@ void initBootButton() {
 
 void IRAM_ATTR handleBPInterrupt() {
     currentBPState = !lastBPState;
+    bootButtonPressedTime = millis();
     // Print current mode
     Serial.println("[INFO] Boot button pressed!");
 }
@@ -24,6 +27,10 @@ void initBootButtonAsInterrupt() {
 }
 
 bool isBootButtonPressed_interrupt() {
+    if ((millis() - bootButtonPressedTime) > 3000) {
+        lastBPState = currentBPState;
+        return false;
+    }
     bool ret = currentBPState != lastBPState;
     lastBPState = currentBPState;
     return ret;

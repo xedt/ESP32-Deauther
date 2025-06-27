@@ -19,9 +19,9 @@ void setup() {
 
   initBootButtonAsInterrupt();
   
-  WiFi.mode(WIFI_MODE_AP);
+  WiFi.mode(WIFI_MODE_APSTA);
   WiFi.softAP(AP_SSID, AP_PASS);
-  esp_wifi_set_max_tx_power(84);
+  esp_wifi_set_max_tx_power(WIFI_TX_MAX_POWER);
 
   start_web_interface();
   digitalWrite(MODE_LED, LOW);

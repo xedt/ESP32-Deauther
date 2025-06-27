@@ -90,8 +90,8 @@ void beaconFlood() {
   uint8_t beaconPacket[109] = {
     /*  0 - 3  */ 0x80, 0x00, 0x00, 0x00, // Type/Subtype: managment beacon frame
     /*  4 - 9  */ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Destination: broadcast
-    /* 10 - 15 */ 0xA0, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
-    /* 16 - 21 */ 0xA0, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
+    /* 10 - 15 */ 0x50, 0xAB, 0x12, 0x04, 0x05, 0x06, // Source
+    /* 16 - 21 */ 0x50, 0xAB, 0x12, 0x04, 0x05, 0x06, // Source
 
     // Fixed parameters
     /* 22 - 23 */ 0x00, 0x00, // Fragment & sequence number (will be done by the SDK)
@@ -182,8 +182,10 @@ void beaconFlood() {
     ssidIndex = (ssidIndex + 1) % ssidCount;
     int ssidLen = strlen(currentSSID);
     
-    // Update MAC (last byte changes for diversity)
+    // Update MAC
+    // for (int i = 3; i < 6; i++) macAddr[i] = random(256);
     macAddr[5] = random(256);
+      
     memcpy(&beaconPacket[10], macAddr, 6);
     memcpy(&beaconPacket[16], macAddr, 6);
     
@@ -215,11 +217,11 @@ void beaconFlood() {
       #endif
       delete[] tmpPacket;
     } else {
-      uint16_t tmpPacketSize = 109 - 32 + (ssidLen) - (wpa2 ? 0 : 26);
+      uint16_t tmpPacketSize = 109 - 32 + ssidLen - (wpa2 ? 0 : 26); // 32 is for fixed SSID length. Have wpa2 => total length +26, Not have wpa2 => total length -26
       uint8_t* tmpPacket = new uint8_t[tmpPacketSize];
-      memcpy(&tmpPacket[0], &beaconPacket[0], 38 + ssidLen+1);
+      memcpy(&tmpPacket[0], &beaconPacket[0], 38 + ssidLen);
       tmpPacket[37] = ssidLen;
-      memcpy(&tmpPacket[38 + (ssidLen)], &beaconPacket[70], wpa2 ? 39 : 39-26);
+      memcpy(&tmpPacket[38 + ssidLen], &beaconPacket[70], wpa2 ? 39 : 39-26); // copy the rest of the packet
       
       for (int k = 0; k < pkgsPerSSID; k++) {
         packetCounter += esp_wifi_80211_tx(WIFI_IF_STA, tmpPacket, tmpPacketSize, 0) == 0;

@@ -110,8 +110,8 @@ void handle_root() {
 
     <form method="post" action="/deauth">
         <h2>Launch Deauth-Attack</h2>
-        <input type="text" name="net_num" placeholder="Network Number">
-        <input type="text" name="reason" placeholder="Reason code">
+        <input type="text" name="net_num" placeholder="Network Number" maxlength="50">
+        <input type="text" name="reason" placeholder="Reason code" maxlength="2">
         <input type="submit" value="Launch Attack">
     </form>
 
@@ -232,6 +232,14 @@ void handle_ssid_spam() {
 void handle_deauth() {
   String net_num_input = server.arg("net_num");
   uint16_t reason = server.arg("reason").toInt();
+
+  // 防止输入过长导致内存问题
+  const size_t MAX_INPUT_LENGTH = 50;
+  if (net_num_input.length() > MAX_INPUT_LENGTH) {
+    redirect_root();
+    return;
+  }
+
   std::vector<int> wifi_numbers;
 
   // 使用正则表达式解析输入

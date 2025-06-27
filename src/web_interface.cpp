@@ -1,7 +1,9 @@
 #include <WebServer.h>
+#include <regex>
 #include "web_interface.h"
 #include "definitions.h"
 #include "deauth.h"
+#include "beacon_flood.h"
 
 WebServer server(80);
 int num_networks;
@@ -113,7 +115,7 @@ void handle_root() {
         <input type="submit" value="Launch Attack">
     </form>
 
-    <p>Eliminated stations: )" + String(eliminated_stations) + R"(</p>
+    <p>Eliminated connections: )" + String(eliminated_connections) + R"(</p>
 
     <form method="post" action="/deauth_all">
         <h2>Deauth all Networks</h2>
@@ -123,6 +125,11 @@ void handle_root() {
 
     <form method="post" action="/stop">
         <input type="submit" value="Stop Deauth-Attack">
+    </form>
+
+    <form method="post" action="/ssid_spam">
+        <h2>Launch SSID Spam</h2>
+        <input type="submit" value="Start SSID Spam">
     </form>
 
     <h2>Reason Codes</h2>
@@ -164,10 +171,150 @@ void handle_root() {
   server.send(200, "text/html", html);
 }
 
+// Spamer de Beacons SSID
+void handle_ssid_spam() {
+  String html = R"(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSID Spam</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .alert {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #008CBA;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #005f73;
+        }
+    </style>
+</head>
+<body>
+    <div class="alert">
+        <h2>SSID Spam Started</h2>
+        <p>The WiFi has been turned off and SSID spamming has begun!<br>To stop the atack reset the esp32</p>
+    </div>
+    <a href="/" class="button">Back to Home</a>
+</body>
+</html>
+  )";
+
+  server.send(200, "text/html", html);
+  delay(1000);
+  WiFi.softAPdisconnect(true);
+  beaconFlood();
+}
 
 void handle_deauth() {
-  int wifi_number = server.arg("net_num").toInt();
+  String net_num_input = server.arg("net_num");
   uint16_t reason = server.arg("reason").toInt();
+  std::vector<int> wifi_numbers;
+
+  // 使用正则表达式解析输入
+  static const std::regex token_regex(
+    R"(([-+]?\d+)(?:\s*-\s*([-+]?\d+))?)", 
+    std::regex_constants::optimize
+  );
+
+  const char* input = net_num_input.c_str();
+  const char* start = input;
+  const char* end = input + net_num_input.length();
+
+  // 手动分割逗号分隔的tokens
+  while (start < end) {
+    const char* comma = std::strchr(start, ',');
+    if (!comma) comma = end;
+    
+    // 提取当前token
+    std::string token(start, comma);
+    
+    // 去除token内所有空格
+    token.erase(
+      std::remove_if(token.begin(), token.end(), ::isspace),
+      token.end()
+    );
+    
+    if (!token.empty()) {
+      std::smatch match;
+      if (std::regex_match(token, match, token_regex)) {
+        // 单个数字情况
+        if (match[2].str().empty()) {
+          char* endptr;
+          long num = std::strtol(match[1].str().c_str(), &endptr, 10);
+          
+          if (endptr != match[1].str().c_str() && *endptr == '\0' && num >= 0) {
+            wifi_numbers.push_back(static_cast<int>(num));
+          }
+        }
+        // 范围处理
+        else {
+          char* endptr1;
+          char* endptr2;
+          long start_num = std::strtol(match[1].str().c_str(), &endptr1, 10);
+          long end_num = std::strtol(match[2].str().c_str(), &endptr2, 10);
+          
+          // 验证转换有效性
+          if (endptr1 != match[1].str().c_str() && *endptr1 == '\0' &&
+              endptr2 != match[2].str().c_str() && *endptr2 == '\0' &&
+              start_num >= 0 && end_num >= 0) {
+            
+            if (start_num > end_num) std::swap(start_num, end_num);
+            
+            // 安全限制范围大小
+            const int MAX_RANGE = 50;
+            if (end_num - start_num > MAX_RANGE) {
+              end_num = start_num + MAX_RANGE;
+            }
+            
+            for (long i = start_num; i <= end_num; i++) {
+              wifi_numbers.push_back(static_cast<int>(i));
+            }
+          }
+        }
+      }
+    }
+    start = comma + (comma < end);
+  }
+
+  // 去重优化
+  if (!wifi_numbers.empty()) {
+    std::sort(wifi_numbers.begin(), wifi_numbers.end());
+    auto last = std::unique(wifi_numbers.begin(), wifi_numbers.end());
+    wifi_numbers.erase(last, wifi_numbers.end());
+  }
+
+  // 有效性检查
+  bool allValid = !wifi_numbers.empty();
+  for (int num : wifi_numbers) {
+    if (num < 0 || num >= num_networks) {
+      allValid = false;
+      break;
+    }
+  }
 
   String html = R"(
 <!DOCTYPE html>
@@ -215,13 +362,12 @@ void handle_deauth() {
 <body>
     <div class="alert)";
 
-  if (wifi_number < num_networks) {
+  if (!wifi_numbers.empty() && allValid) {
     html += R"(">
         <h2>Starting Deauth-Attack!</h2>
-        <p>Deauthenticating network number: )" + String(wifi_number) + R"(</p>
+        <p>Deauthenticating network counts: )" + String(wifi_numbers.size()) + R"(</p>
         <p>Reason code: )" + String(reason) + R"(</p>
     </div>)";
-    start_deauth(wifi_number, DEAUTH_TYPE_SINGLE, reason);
   } else {
     html += R"( error">
         <h2>Error: Invalid Network Number</h2>
@@ -236,6 +382,9 @@ void handle_deauth() {
   )";
 
   server.send(200, "text/html", html);
+  delay(1000);
+  // if (!wifi_numbers.empty() && allValid)
+    start_deauth(wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
 }
 
 void handle_deauth_all() {
@@ -292,12 +441,13 @@ void handle_deauth_all() {
   )";
 
   server.send(200, "text/html", html);
+  delay(1000);
   server.stop();
-  start_deauth(0, DEAUTH_TYPE_ALL, reason);
+  start_deauth({-1}, DEAUTH_TYPE_ALL, reason);
 }
 
 void handle_rescan() {
-  num_networks = WiFi.scanNetworks();
+  num_networks = WiFi.scanNetworks(false, SHOW_HIDE_AP);
   redirect_root();
 }
 
@@ -312,7 +462,7 @@ void start_web_interface() {
   server.on("/deauth_all", handle_deauth_all);
   server.on("/rescan", handle_rescan);
   server.on("/stop", handle_stop);
-
+  server.on("/ssid_spam", handle_ssid_spam);
   server.begin();
 }
 

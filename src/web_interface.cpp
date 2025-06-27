@@ -1,6 +1,5 @@
 #include <WebServer.h>
-#include <sstream>
-#include <set>
+#include <regex>
 #include "web_interface.h"
 #include "definitions.h"
 #include "deauth.h"
@@ -226,7 +225,7 @@ void handle_ssid_spam() {
 
   server.send(200, "text/html", html);
   delay(1000);
-  WiFi.softAPdisconnect();
+  WiFi.softAPdisconnect(true);
   beaconFlood();
 }
 
@@ -234,42 +233,87 @@ void handle_deauth() {
   String net_num_input = server.arg("net_num");
   uint16_t reason = server.arg("reason").toInt();
   std::vector<int> wifi_numbers;
-  
-  // 使用标准库解析网络编号输入（支持逗号分隔和范围）
-  std::string input = net_num_input.c_str();
-  std::istringstream ss(input);
-  std::string token;
-  
-  while (std::getline(ss, token, ',')) {
-    token.erase(remove_if(token.begin(), token.end(), ::isspace), token.end());
+
+  // 使用正则表达式解析输入
+  static const std::regex token_regex(
+    R"(([-+]?\d+)(?:\s*-\s*([-+]?\d+))?)", 
+    std::regex_constants::optimize
+  );
+
+  const char* input = net_num_input.c_str();
+  const char* start = input;
+  const char* end = input + net_num_input.length();
+
+  // 手动分割逗号分隔的tokens
+  while (start < end) {
+    const char* comma = std::strchr(start, ',');
+    if (!comma) comma = end;
     
-    // 处理范围表达式 (如 "1-3")
-    size_t dashPos = token.find('-');
-    if (dashPos != std::string::npos) {
-      int start = std::stoi(token.substr(0, dashPos));
-      int end = std::stoi(token.substr(dashPos + 1));
-      
-      if (start > end) std::swap(start, end);
-      
-      for (int i = start; i <= end; i++) {
-        wifi_numbers.push_back(i);
-      }
-    } 
-    // 处理单个数字
-    else {
-      try {
-        wifi_numbers.push_back(std::stoi(token));
-      } 
-      catch (...) {
-        // 忽略无效输入
+    // 提取当前token
+    std::string token(start, comma);
+    
+    // 去除token内所有空格
+    token.erase(
+      std::remove_if(token.begin(), token.end(), ::isspace),
+      token.end()
+    );
+    
+    if (!token.empty()) {
+      std::smatch match;
+      if (std::regex_match(token, match, token_regex)) {
+        // 单个数字情况
+        if (match[2].str().empty()) {
+          char* endptr;
+          long num = std::strtol(match[1].str().c_str(), &endptr, 10);
+          
+          if (endptr != match[1].str().c_str() && *endptr == '\0' && num >= 0) {
+            wifi_numbers.push_back(static_cast<int>(num));
+          }
+        }
+        // 范围处理
+        else {
+          char* endptr1;
+          char* endptr2;
+          long start_num = std::strtol(match[1].str().c_str(), &endptr1, 10);
+          long end_num = std::strtol(match[2].str().c_str(), &endptr2, 10);
+          
+          // 验证转换有效性
+          if (endptr1 != match[1].str().c_str() && *endptr1 == '\0' &&
+              endptr2 != match[2].str().c_str() && *endptr2 == '\0' &&
+              start_num >= 0 && end_num >= 0) {
+            
+            if (start_num > end_num) std::swap(start_num, end_num);
+            
+            // 安全限制范围大小
+            const int MAX_RANGE = 50;
+            if (end_num - start_num > MAX_RANGE) {
+              end_num = start_num + MAX_RANGE;
+            }
+            
+            for (long i = start_num; i <= end_num; i++) {
+              wifi_numbers.push_back(static_cast<int>(i));
+            }
+          }
+        }
       }
     }
+    start = comma + (comma < end);
   }
 
+  // 去重优化
   if (!wifi_numbers.empty()) {
-    // 使用std::set进行去重（会排序）
-    std::set<int> unique_set(wifi_numbers.begin(), wifi_numbers.end());
-    wifi_numbers.assign(unique_set.begin(), unique_set.end());
+    std::sort(wifi_numbers.begin(), wifi_numbers.end());
+    auto last = std::unique(wifi_numbers.begin(), wifi_numbers.end());
+    wifi_numbers.erase(last, wifi_numbers.end());
+  }
+
+  // 有效性检查
+  bool allValid = !wifi_numbers.empty();
+  for (int num : wifi_numbers) {
+    if (num < 0 || num >= num_networks) {
+      allValid = false;
+      break;
+    }
   }
 
   String html = R"(
@@ -318,22 +362,12 @@ void handle_deauth() {
 <body>
     <div class="alert)";
 
-  // 检查是否有有效的网络编号
-  bool allValid = true;
-  for (int num : wifi_numbers) {
-    if (num < 0 || num >= num_networks) {
-      allValid = false;
-      break;
-    }
-  }
-
   if (!wifi_numbers.empty() && allValid) {
     html += R"(">
         <h2>Starting Deauth-Attack!</h2>
         <p>Deauthenticating network counts: )" + String(wifi_numbers.size()) + R"(</p>
         <p>Reason code: )" + String(reason) + R"(</p>
     </div>)";
-
   } else {
     html += R"( error">
         <h2>Error: Invalid Network Number</h2>
@@ -349,7 +383,8 @@ void handle_deauth() {
 
   server.send(200, "text/html", html);
   delay(1000);
-  start_deauth(wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
+  // if (!wifi_numbers.empty() && allValid)
+    start_deauth(wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
 }
 
 void handle_deauth_all() {

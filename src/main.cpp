@@ -7,20 +7,9 @@
 #include "boot_button_pressed.h"
 
 int curr_channel = 1;
-static uint8_t macAddr[6];
-void setup() {
-#ifdef SERIAL_DEBUG
-  Serial.begin(115200);
-#endif
-#ifdef LED
-  pinMode(LED, OUTPUT);
-  pinMode(MODE_LED, OUTPUT);
-#endif
-
-  initBootButtonAsInterrupt();
-  
-#ifdef GENERATE_RANDOM_MAC
+void setRandomMac() {
   // Generate random MAC
+  static uint8_t macAddr[6];
   do {
     for (int i = 0; i < 6; i++) {
       macAddr[i] = random(256); // Random byte
@@ -33,6 +22,21 @@ void setup() {
     macAddr[5] = random(256);
   } while (macAddr[5] == last_mac5);
   esp_wifi_set_mac(WIFI_IF_STA, macAddr);
+}
+
+void setup() {
+#ifdef SERIAL_DEBUG
+  Serial.begin(115200);
+#endif
+#ifdef LED
+  pinMode(LED, OUTPUT);
+  pinMode(MODE_LED, OUTPUT);
+#endif
+
+  initBootButtonAsInterrupt();
+  
+#ifdef GENERATE_RANDOM_MAC
+  setRandomMac();
 #endif
 
   WiFi.mode(WIFI_MODE_APSTA);

@@ -139,7 +139,6 @@ void beaconFlood() {
   static uint8_t macAddr[6];
   static uint8_t wifi_channel = 1;
   static uint32_t packetCounter = 0;
-  static uint32_t packetRateTime = 0;
   static uint32_t packetSize = wpa2 ? sizeof(beaconPacket) : (sizeof(beaconPacket) - 26);
   static bool initialized = false;
   static int ssidIndex = 0;
@@ -169,7 +168,7 @@ void beaconFlood() {
   while (true)
   {
     // Main function logic (runs continuously)
-    uint32_t currentTime = millis();
+    static uint32_t currentTime = millis();
 
     // Channel hopping
     if (sizeof(channels) > 1) {
@@ -211,8 +210,8 @@ void beaconFlood() {
       }
       #ifdef DEBUG_PKGS_SENT
       if(isBootButtonPressed_interrupt()) {
-        packetRateTime = currentTime;
-        DEBUG_PRINTLN("Packets sent since last query:");
+        DEBUG_PRINTF("Packets sent since last query %.2fs ago:\n", (millis() - currentTime) / 1000.0f);
+        currentTime = millis();
         DEBUG_PRINTLN(packetCounter);
         packetCounter = 0;
         DEBUG_PRINTLN("Last Pkg Struc Hex: ");
@@ -233,8 +232,8 @@ void beaconFlood() {
       }
       #ifdef DEBUG_PKGS_SENT
       if(isBootButtonPressed_interrupt()) {
-        packetRateTime = currentTime;
-        DEBUG_PRINTLN("Packets sent since last query:");
+        DEBUG_PRINTF("Packets sent since last query %.2fs ago:\n", (millis() - currentTime) / 1000.0f);
+        currentTime = millis();
         DEBUG_PRINTLN(packetCounter);
         packetCounter = 0;
         DEBUG_PRINTLN("Last Pkg Struc Hex: ");

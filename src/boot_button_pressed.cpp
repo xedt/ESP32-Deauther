@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #define BOOT_BUTTON_PIN 9
+#define BUTTON_DEBOUNCE_MILIS 200
 
 static uint8_t currentBPState = 0;
 static uint8_t lastBPState = 0;

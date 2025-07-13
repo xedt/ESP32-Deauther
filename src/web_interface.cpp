@@ -392,7 +392,7 @@ void handle_deauth() {
   server.send(200, "text/html", html);
   delay(1000);
   if (!valid_wifi_numbers.empty())
-    start_deauth(wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
+    start_deauth(valid_wifi_numbers, DEAUTH_TYPE_LIMITED, reason);
 }
 
 void handle_deauth_all() {

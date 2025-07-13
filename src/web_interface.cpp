@@ -372,7 +372,7 @@ void handle_deauth() {
   if (!valid_wifi_numbers.empty()) {
     html += R"(">
         <h2>Starting Deauth-Attack!</h2>
-        <p>Deauthenticating network counts: )" + String(wifi_numbers.size()) + R"(</p>
+        <p>Deauthenticating network counts: )" + String(valid_wifi_numbers.size()) + R"(</p>
         <p>Reason code: )" + String(reason) + R"(</p>
     </div>)";
     
